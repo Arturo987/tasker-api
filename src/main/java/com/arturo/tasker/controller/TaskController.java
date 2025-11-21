@@ -1,0 +1,100 @@
+package com.arturo.tasker.controller;
+
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.arturo.tasker.dto.TaskRequest;
+import com.arturo.tasker.dto.TaskResponse;
+import com.arturo.tasker.entity.Task;
+import com.arturo.tasker.entity.User;
+import com.arturo.tasker.service.TaskService;
+import com.arturo.tasker.service.UserService;
+
+import lombok.RequiredArgsConstructor;
+
+@RestController
+@RequestMapping("/api/tasks")
+@RequiredArgsConstructor
+public class TaskController {
+
+	private final TaskService taskService;
+	private final UserService userService;
+	
+	private final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+	
+	@PostMapping
+	public ResponseEntity<TaskResponse> createTask(@RequestBody TaskRequest request) {
+		// check user
+		User user = userService.findById(request.getUserId())
+				.orElseThrow(() -> new RuntimeException("User not found"));
+		
+	
+		// build task
+		Task task = Task.builder()
+				.title(request.getTitle())
+				.description(request.getDescription())
+				.completed(request.isCompleted())
+				.user(user)
+				.build();
+		
+		Task saved = taskService.create(task);
+		
+		return ResponseEntity.ok(toResponse(saved));
+	}
+	
+	@GetMapping("/user/{userId}")
+	public ResponseEntity<List<TaskResponse>> getTaskByUser(@PathVariable Long userId) {
+		List<Task> tasks = taskService.findByUserId(userId);
+		
+		List<TaskResponse> responses = tasks.stream()
+				.map(this::toResponse)
+				.collect(Collectors.toList());
+		
+		return ResponseEntity.ok(responses);
+	}
+	
+	@PutMapping("/{id}")
+	public ResponseEntity<TaskResponse> updateTask(
+			@PathVariable Long id,
+			@RequestBody TaskRequest request
+		) {
+		Task existing = taskService.findById(id)
+				.orElseThrow(() -> new RuntimeException("Task not found"));
+		
+		existing.setTitle(request.getTitle());
+		existing.setDescription(request.getDescription());
+		existing.setCompleted(request.isCompleted());
+		
+		Task updated = taskService.update(existing);
+		
+		return ResponseEntity.ok(toResponse(updated));
+	}
+	
+	@DeleteMapping("/{id}")
+	public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
+		taskService.deleteById(id);
+		return ResponseEntity.noContent().build();
+	}
+		
+	private TaskResponse toResponse(Task task) {
+		return TaskResponse.builder()
+				.id(task.getId())
+				.title(task.getTitle())
+				.description(task.getDescription())
+				.completed(task.isCompleted())
+				.createdAt(task.getCreatedAt() != null ? task.getCreatedAt().format(formatter) : null)
+				.userId(task.getUser() != null ? task.getUser().getId() : null)
+				.build();
+	}
+}
