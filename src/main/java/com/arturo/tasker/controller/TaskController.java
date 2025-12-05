@@ -2,6 +2,7 @@ package com.arturo.tasker.controller;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.arturo.tasker.dto.TaskRequest;
 import com.arturo.tasker.dto.TaskResponse;
@@ -33,25 +36,35 @@ public class TaskController {
 	
 	private final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 	
-	@PostMapping
-	public ResponseEntity<TaskResponse> createTask(@RequestBody TaskRequest request) {
-		// check user
-		User user = userService.findById(request.getUserId())
-				.orElseThrow(() -> new RuntimeException("User not found"));
+	@GetMapping
+    public List<TaskResponse> getMyTasks() {
+		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+		System.out.println("AUTH TYPE: " + auth.getClass());
+		System.out.println("PRINCIPAL: " + auth.getPrincipal());
+
+		if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+		    throw new RuntimeException("Not authenticated");
+		}
+
+		User currentUser = (User) auth.getPrincipal();
 		
+        return taskService.getAllTasksByUser(currentUser.getId());
+    }
 	
-		// build task
-		Task task = Task.builder()
-				.title(request.getTitle())
-				.description(request.getDescription())
-				.completed(request.isCompleted())
-				.user(user)
-				.build();
-		
-		Task saved = taskService.create(task);
-		
-		return ResponseEntity.ok(toResponse(saved));
-	}
+	@GetMapping("/{id}")
+	public Optional<Task> getMyTask(@PathVariable Long id) {
+		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+			if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+				throw new RuntimeException("Not authenticated");
+			}
+			
+			User currentUser = (User) auth.getPrincipal();
+			
+			return taskService.findById(id);
+		}
+	
+	
+	
 	
 	@GetMapping("/user/{userId}")
 	public ResponseEntity<List<TaskResponse>> getTaskByUser(@PathVariable Long userId) {
@@ -93,8 +106,18 @@ public class TaskController {
 				.title(task.getTitle())
 				.description(task.getDescription())
 				.completed(task.isCompleted())
-				.createdAt(task.getCreatedAt() != null ? task.getCreatedAt().format(formatter) : null)
+				.createdAt(task.getCreatedAt())
 				.userId(task.getUser() != null ? task.getUser().getId() : null)
 				.build();
+	}
+	
+	@PostMapping
+	public TaskResponse create(@RequestBody TaskRequest request) {
+		
+		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+		User currentUser = (User) auth.getPrincipal();
+		
+		return taskService.createTask(request, currentUser.getId());
 	}
 }

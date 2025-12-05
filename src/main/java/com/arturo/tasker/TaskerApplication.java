@@ -1,5 +1,7 @@
 package com.arturo.tasker;
 
+import java.time.LocalDateTime;
+
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -21,27 +23,6 @@ public class TaskerApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(TaskerApplication.class, args);
-	}
-
-	@Bean
-	CommandLineRunner init(UserRepository users, TaskRepository tasks) {
-	    return args -> {
-	        User u = users.save(
-	            User.builder()
-	                .email("test@test.com")
-	                .password("1234")
-	                .name("Arturo")
-	                .build()
-	        );
-
-	        tasks.save(
-	            Task.builder()
-	                .title("Probar API")
-	                .description("Hacer el CRUD")
-	                .user(u)
-	                .build()
-	        );
-	    };
 	}
 
 }

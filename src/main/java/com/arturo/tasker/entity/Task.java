@@ -21,8 +21,10 @@ public class Task {
 
     private String description;
 
+    @Builder.Default
     private boolean completed = false;
 
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @ManyToOne

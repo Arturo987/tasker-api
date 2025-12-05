@@ -1,5 +1,7 @@
 package com.arturo.tasker.dto;
 
+import java.time.LocalDateTime;
+
 import lombok.Builder;
 import lombok.Data;
 
@@ -10,6 +12,6 @@ public class TaskResponse {
 	private String title;
 	private String description;
 	private boolean completed;
-	private String createdAt;
+	private LocalDateTime createdAt;
 	private Long userId;
 }
