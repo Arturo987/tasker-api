@@ -23,4 +23,14 @@ public class User {
 	
 	@Column(nullable = false)
 	private String name;
+	
+	public enum Role {
+		USER,
+		ADMIN
+	}
+	
+	@Builder.Default
+	@Enumerated(EnumType.STRING)
+	private Role role = Role.USER;
+	
 }

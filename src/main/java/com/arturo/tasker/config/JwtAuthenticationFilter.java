@@ -27,50 +27,59 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     
-	@Override
-	protected void doFilterInternal(HttpServletRequest request, 
-			HttpServletResponse response, 
-			FilterChain filterChain)
-			throws ServletException, IOException {
-		
-		// 1. Take a look at header Authorization
-		final String authHeader = request.getHeader("Authorization");
-		
-		if(authHeader == null || !authHeader.startsWith("Bearer ")) {
-			// If there is no token, we follow the usual chain
-			filterChain.doFilter(request, response);
-			return;
-		}
-		
-		// 2. We take the token
-		final String token = authHeader.substring(7);
-		
-		// 3. We take the username (email)
-		final String username = jwtService.extractUsername(token);
-		
-		// 4. If we have the username and there is not yet authentication in the context
-        if (username != null) {
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain)
+                                    throws ServletException, IOException {
+        
+        // 1. Take a look at header Authorization
+        final String authHeader = request.getHeader("Authorization");
 
-			User user = userRepository.findByEmail(username).orElse(null);
-			if (user != null) {
-				// Here we could set roles if we had them
-				var authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
-				
-				UsernamePasswordAuthenticationToken authToken = 
-						new UsernamePasswordAuthenticationToken(
-								user,
-								null,
-								authorities
-							);
-				
-				authToken.setDetails(
-							new WebAuthenticationDetailsSource().buildDetails(request)
-						);
-				
-				SecurityContextHolder.getContext().setAuthentication(authToken);
-			}
-	}
+        // If there is no token, we follow the usual chain
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // 2. We take the token
+        final String token = authHeader.substring(7);
+
+        // 3. We take the username (email)
+        final String username = jwtService.extractUsername(token);
+
+        // 4. If we have the username and there is not yet authentication in the context
+        if (username != null
+                && SecurityContextHolder.getContext().getAuthentication() == null) {
+
+            User user = userRepository.findByEmail(username).orElse(null);
+
+            // We check that the token is valid and belongs to this user
+            if (user != null && jwtService.isTokenValid(token, user)) {
+
+                // Here we set roles so Spring Security knows what the user can do
+                var authorities =
+                        List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+
+                // Build authentication object to let Spring Security know the user is authenticated
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(
+                                user,
+                                null,
+                                authorities
+                        );
+
+                // Attach request context info
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
+
+                // Store authentication in security context
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+        }
+
         // 5. Continue the chain
         filterChain.doFilter(request, response);
-	}
+    }
 }

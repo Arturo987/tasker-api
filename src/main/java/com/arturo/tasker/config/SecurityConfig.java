@@ -12,13 +12,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
-@Profile("!h2")
 public class SecurityConfig {
 
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -35,9 +35,12 @@ public class SecurityConfig {
 				// Public endpoints
 				.requestMatchers(
 						"/api/auth/**",
-						"/api/users/register",
 						"/h2-console/**"
 				).permitAll()
+				
+				// Admin only
+				.requestMatchers("/admin/**").hasRole("ADMIN")
+				
 				// The rest is protected
 				.anyRequest().authenticated()
 			)
@@ -55,4 +58,10 @@ public class SecurityConfig {
 	public PasswordEncoder passwordEncoder() {
 		return new BCryptPasswordEncoder();
 	}
+	
+	@PostConstruct
+	public void init() {
+	    System.out.println(">>> SECURITY CONFIG CARGADO <<<");
+	}
+
 }
