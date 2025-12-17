@@ -13,6 +13,7 @@ import com.arturo.tasker.entity.User;
 import com.arturo.tasker.service.AuthenticationService;
 import com.arturo.tasker.service.UserService;
 
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -23,12 +24,14 @@ public class AuthController {
 	private final AuthenticationService authService;
 	private final UserService userService;
 	
+	@Operation(summary = "Register a new user", description="Inputs: email, password and name")
 	@PostMapping("/register")
 	public ResponseEntity<User> register(@RequestBody RegisterRequest request) {
 		User savedUser = userService.register(request);
 		return ResponseEntity.ok(savedUser);
 	}
 	
+	@Operation(summary = "Log in a user", description="Inputs: email and password")
 	@PostMapping("/login")
 	public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest request) {
 		return ResponseEntity.ok(authService.login(request));

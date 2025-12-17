@@ -24,6 +24,7 @@ import com.arturo.tasker.entity.User;
 import com.arturo.tasker.service.TaskService;
 import com.arturo.tasker.service.UserService;
 
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -36,6 +37,7 @@ public class TaskController {
 	
 	private final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 	
+	@Operation(summary = "Access to personal tasks")
 	@GetMapping
     public List<TaskResponse> getMyTasks() {
 		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -51,31 +53,31 @@ public class TaskController {
         return taskService.getAllTasksByUser(currentUser.getId());
     }
 	
+	@Operation(summary = "Access to a certain personal task")
 	@GetMapping("/{id}")
-	public Optional<Task> getMyTask(@PathVariable Long id) {
+	public ResponseEntity<TaskResponse> getMyTask(@PathVariable Long id) {
+		
 		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+		
 			if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
 				throw new RuntimeException("Not authenticated");
 			}
-			
+						
 			User currentUser = (User) auth.getPrincipal();
 			
-			return taskService.findById(id);
-		}
-	
-	
-	
-	
-	@GetMapping("/user/{userId}")
-	public ResponseEntity<List<TaskResponse>> getTaskByUser(@PathVariable Long userId) {
-		List<Task> tasks = taskService.findByUserId(userId);
-		
-		List<TaskResponse> responses = tasks.stream()
-				.map(this::toResponse)
-				.collect(Collectors.toList());
-		
-		return ResponseEntity.ok(responses);
-	}
+			Task task = taskService.findById(id)
+					.orElseThrow(() -> new RuntimeException("Task not found"));
+			
+			// The task must belong to the current user
+			if (!task.getUser().getId().equals(currentUser.getId())) {
+			    throw new RuntimeException("Forbidden");
+			}
+			
+			TaskResponse response = toResponse(task);
+			
+			return ResponseEntity.ok(response);
+			
+			}
 	
 	@PutMapping("/{id}")
 	public ResponseEntity<TaskResponse> updateTask(
