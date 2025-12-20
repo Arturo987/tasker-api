@@ -42,28 +42,36 @@ public class AdminController {
     }
     
     @Operation(summary = "Deletes a certain task", description = "Requires admin role")
-    @DeleteMapping("tasks/{id}")
-    public void deleteTask(@PathVariable Long id) {
-    	if (taskRepository.existsById(id)) {
-    		taskRepository.deleteById(id);
-    	}
+    @DeleteMapping("/tasks/{id}")
+    public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
+    	if (!taskRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+    	
+		taskRepository.deleteById(id);
+    	
+    	return ResponseEntity.noContent().build();
     }
     
     @Operation(summary = "Deletes a certain user", description = "Requires admin role")
-    @DeleteMapping("users/{id}")
-    public void deleteUser(@PathVariable Long id) {
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    	if (!userRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+    	
     	// Delete tasks of user to avoid constraints
     	taskRepository.deleteAll(
     			taskRepository.findByUserId(id)
 		);
     	
-    	if(userRepository.existsById(id)) {
-    		userRepository.deleteById(id);
-    	}
+		userRepository.deleteById(id);
+    
+    	return ResponseEntity.noContent().build();
     }
     
 
-    @Operation(summary = "Obtener tareas de un usuario", description = "Solo accesible para administradores")
+    @Operation(summary = "Get tasks from a user", description = "Only accesible for admins")
     @GetMapping("/tasks/user/{userId}")
     public ResponseEntity<List<TaskResponse>> getTasksByUserId(@PathVariable Long userId) {
 
